@@ -1,9 +1,6 @@
 <?php
 session_start();
 header('Content-type: text/html; charset=UTF-8');
-$mysqli = new mysqli('localhost', 'root', '') or die("Cannot conect to database");
-$mysqli->select_db('blog') or die("Cannot select database database");
-$mysqli->set_charset('utf8');
 mb_internal_encoding('UTF-8');
 $act = isset($_GET['act']) ? $_GET['act'] : 'list';
 
@@ -33,26 +30,19 @@ switch ($act) {
         break;
 	case 'list':
         $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
-        $limit = 2;
-        $offset = ($page - 1) * $limit;
-		$records = array();
-        $pages_result = $mysqli->query('SELECT COUNT(*) AS cnt FROM entry')->fetch_assoc();
-        $pages = ceil($pages_result['cnt'] / $limit);
-		$sel = $mysqli->query("SELECT entry.*, COUNT(comments.id) AS comments
-        FROM entry
-        LEFT JOIN comments ON entry.id = comments.entry_id
-        GROUP BY entry.id
-        ORDER BY date DESC
-        LIMIT $offset, $limit");
-		while ($row = $sel->fetch_assoc()){
+        require_once(__DIR__ . "/model/Entry.php")
+        $Entry = new Entry(2);
+        $pages = ceil($Entry->getPagesCount());
+        $records = $Entry->getEntries($page);
+		foreach($records as &$row) {
 			$row['date'] = date('Y-m-d H:i:s', $row['date']);
             $row['content'] = strip_tags(htmlspecialchars($row['content']));
             if(mb_strlen($row['content']) > 300) {
                 $row['content'] = mb_substr(strip_tags($row['content'], 0, 297)) . "...";
             }
+            unset($row);
             $row['content'] = nl2br($row['content']);
-            $row['header'] = htmlentities($row['header']);
-            $records[] = $row;
+            $row['header'] = htmlentities($row['header']); 
 		}
         require ('templates/list.php');
 	   break;
